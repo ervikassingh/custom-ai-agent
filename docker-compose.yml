@@ -1,0 +1,93 @@
+services:
+  # Ollama service - runs the LLM
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-agent-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Remove GPU reservation if not available (for CPU-only systems)
+    # Comment out the deploy section above if you don't have an NVIDIA GPU
+
+  # Ollama model puller - pulls the required model
+  ollama-pull:
+    image: curlimages/curl:latest
+    container_name: ai-agent-ollama-pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:1b}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "Waiting for Ollama to be ready..." &&
+        sleep 5 &&
+        echo "Pulling model: $$OLLAMA_MODEL..." &&
+        curl -X POST http://ollama:11434/api/pull -d "{\"name\": \"$$OLLAMA_MODEL\"}" &&
+        echo "Model pull initiated successfully!"
+    restart: "no"
+
+  # Backend service - NestJS API
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: ai-agent-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:1b}
+      - CORS_ORIGINS=http://localhost:3000,http://frontend:3000
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/chat/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # Frontend service - Next.js app
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:3001
+    container_name: ai-agent-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  ollama-data:
+    driver: local
+

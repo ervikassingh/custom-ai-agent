@@ -17,8 +17,9 @@
     "removeComments": true,
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
-    "incremental": true,
-    "resolveJsonModule": true
+    "incremental": false,
+    "resolveJsonModule": true,
+    "noEmit": false
   }
 }
 
