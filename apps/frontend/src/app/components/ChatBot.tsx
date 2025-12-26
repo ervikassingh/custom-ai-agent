@@ -4,6 +4,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import MessageBubble, { Message } from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 
+// API URL configuration - uses environment variable or falls back to localhost
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 interface HealthStatus {
   status: 'online' | 'offline' | 'model_missing' | 'checking';
   model: string;
@@ -69,7 +72,7 @@ export default function ChatBot() {
     
     try {
       const [response] = await Promise.all([
-        fetch('http://localhost:3001/chat/health'),
+        fetch(`${API_URL}/chat/health`),
         minDelay
       ]);
       if (!response.ok) {
@@ -110,7 +113,7 @@ export default function ChatBot() {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:3001/chat', {
+      const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
