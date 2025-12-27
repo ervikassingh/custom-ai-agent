@@ -1,0 +1,5 @@
+// API Configuration
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Chat Configuration
+export const MAX_HISTORY_PAIRS = 10;
