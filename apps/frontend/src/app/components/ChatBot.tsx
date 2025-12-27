@@ -3,9 +3,18 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import MessageBubble, { Message } from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
-
-// API URL configuration - uses environment variable or falls back to localhost
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import ToolsPanel from './ToolsPanel';
+import {
+  SparklesIcon,
+  SpinnerIcon,
+  RefreshIcon,
+  WrenchIcon,
+  SunIcon,
+  MoonIcon,
+  ChatBubbleIcon,
+  ArrowUpIcon,
+} from './Icons';
+import { API_URL, MAX_HISTORY_PAIRS } from '../config';
 
 interface HealthStatus {
   status: 'online' | 'offline' | 'model_missing' | 'checking';
@@ -24,6 +33,7 @@ export default function ChatBot() {
     model: '',
     message: 'Checking...',
   });
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -113,12 +123,24 @@ export default function ChatBot() {
     setError(null);
 
     try {
+      // Get conversation history (limit to last N message pairs)
+      // We use the current messages state which includes all messages up to now
+      const history = messages
+        .slice(-MAX_HISTORY_PAIRS * 2) // Get last N pairs (each pair = 2 messages)
+        .map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: userMessage.content }),
+        body: JSON.stringify({
+          message: userMessage.content,
+          history,
+        }),
       });
 
       if (!response.ok) {
@@ -170,19 +192,7 @@ export default function ChatBot() {
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 via-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <svg
-                  className="w-5 h-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"
-                  />
-                </svg>
+                <SparklesIcon className="w-5 h-5 text-white" />
               </div>
               {/* Status indicator */}
               <span
@@ -219,35 +229,9 @@ export default function ChatBot() {
                   health.status === 'checking' ? 'scale-110' : 'group-hover:scale-110'
                 }`}>
                   {health.status === 'checking' ? (
-                    <svg 
-                      className="w-3.5 h-3.5 text-blue-500 animate-spin"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                    >
-                      <circle
-                        className="opacity-20"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                      />
-                      <path
-                        className="opacity-90"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                      />
-                    </svg>
+                    <SpinnerIcon className="w-3.5 h-3.5 text-blue-500 animate-spin" />
                   ) : (
-                    <svg 
-                      className="w-3 h-3 text-[var(--muted)] group-hover:text-[var(--muted-foreground)] transition-all duration-200 group-hover:rotate-45"
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                    </svg>
+                    <RefreshIcon className="w-3 h-3 text-[var(--muted)] group-hover:text-[var(--muted-foreground)] transition-all duration-200 group-hover:rotate-45" />
                   )}
                 </div>
               </button>
@@ -256,6 +240,15 @@ export default function ChatBot() {
           
           {/* Actions */}
           <div className="flex items-center gap-1">
+            {/* Tools Button */}
+            <button
+              onClick={() => setIsToolsOpen(true)}
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] hover:ring-1 hover:ring-[var(--border)] hover:scale-110 active:scale-95 active:bg-[var(--surface-elevated)] transition-all duration-200"
+              aria-label="Open tools panel"
+            >
+              <WrenchIcon className="w-5 h-5" />
+            </button>
+            
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -263,21 +256,9 @@ export default function ChatBot() {
               aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {isDark ? (
-                <svg className="w-5 h-5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
-                  />
-                </svg>
+                <SunIcon className="w-5 h-5 transition-transform duration-200" />
               ) : (
-                <svg className="w-5 h-5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"
-                  />
-                </svg>
+                <MoonIcon className="w-5 h-5 transition-transform duration-200" />
               )}
             </button>
           </div>
@@ -289,19 +270,7 @@ export default function ChatBot() {
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center animate-[fade-in_0.5s_ease-out] px-4">
             <div className="w-12 h-12 rounded-2xl bg-[var(--surface)] flex items-center justify-center mb-4 sm:mb-5">
-              <svg
-                className="w-6 h-6 text-[var(--muted)]"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"
-                />
-              </svg>
+              <ChatBubbleIcon className="w-6 h-6 text-[var(--muted)]" />
             </div>
             <h2 className="text-base sm:text-lg font-medium text-[var(--foreground)] mb-2 tracking-tight">
               Start a conversation
@@ -363,35 +332,9 @@ export default function ChatBot() {
               className="flex-shrink-0 m-1.5 w-10 h-10 flex items-center justify-center rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)] disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-200 hover:opacity-80 active:scale-95"
             >
               {isLoading ? (
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
+                <SpinnerIcon className="w-4 h-4 animate-spin" />
               ) : (
-                <svg 
-                  className="w-4 h-4" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18"
-                  />
-                </svg>
+                <ArrowUpIcon className="w-4 h-4" />
               )}
             </button>
           </div>
@@ -400,6 +343,9 @@ export default function ChatBot() {
           <span className="opacity-60">↵</span> to send · <span className="opacity-60">⇧↵</span> for new line
         </p>
       </div>
+
+      {/* Tools Panel */}
+      <ToolsPanel isOpen={isToolsOpen} onClose={() => setIsToolsOpen(false)} />
     </div>
   );
 }

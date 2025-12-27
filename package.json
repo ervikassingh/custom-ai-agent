@@ -8,7 +8,17 @@
     "lint": "turbo run lint",
     "clean": "turbo run clean",
     "dev:backend": "turbo run dev --filter=backend",
-    "dev:frontend": "turbo run dev --filter=frontend"
+    "dev:frontend": "turbo run dev --filter=frontend",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:start": "docker compose up --build -d",
+    "docker:stop": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:build:cpu": "docker compose -f docker-compose.cpu.yml build",
+    "docker:up:cpu": "docker compose -f docker-compose.cpu.yml up -d",
+    "docker:start:cpu": "docker compose -f docker-compose.cpu.yml up --build -d",
+    "docker:stop:cpu": "docker compose -f docker-compose.cpu.yml down",
+    "docker:logs:cpu": "docker compose -f docker-compose.cpu.yml logs -f"
   },
   "devDependencies": {
     "turbo": "^2.3.3"
@@ -18,4 +28,3 @@
     "node": ">=18"
   }
 }
-

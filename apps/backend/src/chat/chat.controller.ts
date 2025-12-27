@@ -14,7 +14,10 @@ export class ChatController {
   @Post()
   async chat(@Body() chatRequest: ChatRequestDto): Promise<ChatResponseDto> {
     try {
-      const response = await this.chatService.generateResponse(chatRequest.message);
+      const response = await this.chatService.generateResponse(
+        chatRequest.message,
+        chatRequest.history || [],
+      );
       return { response };
     } catch (error) {
       if (error instanceof Error) {
