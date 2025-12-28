@@ -13,12 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AI Chat - Powered by Llama 3.2',
+  title: 'AI Assistant - Powered by Ollama',
   description: 'Chat with a local AI model powered by Ollama',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'AI Chat',
+    title: 'AI Assistant',
   },
   formatDetection: {
     telephone: false,
